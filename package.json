@@ -10,7 +10,10 @@
     "build": "vite build",
     "preview": "vite preview",
     "start": "electron ./electron/main.cjs",
-    "app": "vite build && electron ./electron/main.cjs"
+    "app": "vite build && electron ./electron/main.cjs",
+    "db:init": "node server/scripts/initDb.js",
+    "backend": "node server/api/server.js",
+    "backend:test": "node server/scripts/testBackend.js"
   },
   "dependencies": {
     "lucide-react": "^1.61.0",
