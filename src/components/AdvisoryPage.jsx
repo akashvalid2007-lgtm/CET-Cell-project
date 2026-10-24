@@ -1,6 +1,7 @@
 import React from "react";
 import { ArrowLeft, Droplets, Bug, Sprout, Layers, Printer, ShieldCheck, AlertCircle, Sparkles } from "lucide-react";
 import { UI_TRANSLATIONS, DISTRICT_NAMES_TA, DISTRICT_ZONES_TA } from "../data/translations";
+import { getCropStageWiseWater } from "../data/cropStages";
 
 export function AdvisoryPage({ district, crop, valuation, onBackToDashboard, language = "en" }) {
   if (!district || !crop || !valuation) {
@@ -29,6 +30,16 @@ export function AdvisoryPage({ district, crop, valuation, onBackToDashboard, lan
   const waterInLakhLiters = (crop.waterRequiredLitersPerAcre / 100000).toFixed(1);
   const waterInMillionLiters = (crop.waterRequiredLitersPerAcre / 1000000).toFixed(2);
   const waterInAcreInches = Math.round(crop.waterRequiredMm / 25.4);
+
+  const growthStages = getCropStageWiseWater(crop);
+
+  const stageColors = [
+    "#10b981", // Emerald green
+    "#38bdf8", // Sky blue
+    "#f59e0b", // Amber gold
+    "#ec4899", // Rose / pink
+    "#8b5cf6"  // Purple
+  ];
 
   return (
     <div className="advisory-page-container">
@@ -122,35 +133,108 @@ export function AdvisoryPage({ district, crop, valuation, onBackToDashboard, lan
 
         {/* Stage-wise Water Allocation Schedule */}
         <div className="water-schedule-card">
-          <h4 className="schedule-card-title">{t.stageWiseSchedule}</h4>
+          <div className="schedule-card-header">
+            <h4 className="schedule-card-title">
+              {isTa ? "🌾 பயிர் வளர்ச்சி நிலை வாரியான பாசன நீர் மதிப்பீடு & அட்டவணை" : "🌾 Phenological Stage-Wise Water Allocation & Irrigation Protocol"}
+            </h4>
+            <p className="section-subheading" style={{ marginBottom: "16px", fontSize: "12.5px" }}>
+              {isTa
+                ? `மொத்த பாசன நீர் (${crop.waterRequiredLitersPerAcre.toLocaleString()} லிட்டர் / ஏக்கர்) பயிரின் வளர்ச்சி பருவங்களுக்கு ஏற்ப கணக்கிடப்பட்டு பிரிக்கப்பட்டுள்ளது:`
+                : `Stage-by-stage water volume for ${cropDisplayName} calibrated from nursery/planting through final harvest:`}
+            </p>
+          </div>
+
+          {/* Stacked Water Distribution Bar */}
+          <div className="stage-stacked-bar-card">
+            <div className="stage-stacked-bar-header">
+              <span>{isTa ? "முழுமையான நீர் ஒதுக்கீடு விகிதம் (%):" : "Cumulative Lifecycle Water Distribution:"}</span>
+              <span className="highlight-gold font-mono" style={{ fontWeight: 700 }}>100% &bull; {crop.waterRequiredLitersPerAcre.toLocaleString()} L / Acre</span>
+            </div>
+            <div className="stage-stacked-bar">
+              {growthStages.map((stg, i) => (
+                <div
+                  key={stg.stageNumber || i}
+                  className="stage-stacked-segment"
+                  style={{
+                    width: `${stg.sharePct}%`,
+                    backgroundColor: stageColors[i % stageColors.length]
+                  }}
+                  title={`${isTa ? stg.titleTa : stg.title}: ${stg.sharePct}% (${stg.stageLiters.toLocaleString()} L)`}
+                />
+              ))}
+            </div>
+            <div className="stage-stacked-legend">
+              {growthStages.map((stg, i) => (
+                <div key={stg.stageNumber || i} className="stage-legend-item">
+                  <span
+                    className="legend-color-dot"
+                    style={{ backgroundColor: stageColors[i % stageColors.length] }}
+                  />
+                  <span>
+                    <strong>{isTa ? stg.stageNumberTa : stg.stageNumber}</strong>: {stg.sharePct}% ({stg.stageLitersLakh} {isTa ? "லட்சம் லி." : "Lakh L"})
+                  </span>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Detailed Stage Cards */}
           <div className="stages-timeline">
-            <div className="timeline-step">
-              <div className="step-badge">{isTa ? "பருவம் I" : "Stage I"}</div>
-              <strong className="step-title">{t.stage1Title}</strong>
-              <span className="step-days">{isTa ? "நாள் 1 முதல் 20 வரை" : "Day 1 to 20"}</span>
-              <p className="step-desc">{t.stage1Desc}</p>
-            </div>
+            {growthStages.map((stg, i) => {
+              const stageTitle = isTa ? stg.titleTa : stg.title;
+              const stageNumber = isTa ? stg.stageNumberTa : stg.stageNumber;
+              const stageDays = isTa ? stg.daysTa : stg.days;
+              const standingWater = isTa ? stg.standingWaterTa : stg.standingWater;
+              const desc = isTa ? stg.descTa : stg.desc;
 
-            <div className="timeline-step">
-              <div className="step-badge">{isTa ? "பருவம் II" : "Stage II"}</div>
-              <strong className="step-title">{t.stage2Title}</strong>
-              <span className="step-days">{isTa ? "நாள் 21 முதல் 55 வரை" : "Day 21 to 55"}</span>
-              <p className="step-desc">{t.stage2Desc}</p>
-            </div>
+              return (
+                <div key={stg.stageNumber || i} className="timeline-step">
+                  <div className="step-top-row">
+                    <span className="step-badge">{stageNumber}</span>
+                    <span className="step-share-pill">{stg.sharePct}% {isTa ? "பங்கு" : "Budget"}</span>
+                  </div>
 
-            <div className="timeline-step">
-              <div className="step-badge">{isTa ? "பருவம் III" : "Stage III"}</div>
-              <strong className="step-title">{t.stage3Title}</strong>
-              <span className="step-days">{isTa ? "நாள் 56 முதல் 90 வரை" : "Day 56 to 90"}</span>
-              <p className="step-desc">{t.stage3Desc}</p>
-            </div>
+                  <strong className="step-title">{stageTitle}</strong>
+                  <span className="step-days">{stageDays}</span>
 
-            <div className="timeline-step">
-              <div className="step-badge">{isTa ? "பருவம் IV" : "Stage IV"}</div>
-              <strong className="step-title">{t.stage4Title}</strong>
-              <span className="step-days">{isTa ? "நாள் 91 முதல் அறுவடை வரை" : "Day 91 till Harvest"}</span>
-              <p className="step-desc">{t.stage4Desc}</p>
-            </div>
+                  {/* Water Volume Box */}
+                  <div className="stage-water-box">
+                    <div className="stage-water-label">
+                      <span>{isTa ? "தேவைப்படும் நீர்" : "Estimated Water"}</span>
+                      <span className="font-mono" style={{ color: "var(--gold-primary)" }}>{stg.sharePct}%</span>
+                    </div>
+
+                    <div className="stage-water-liters-row">
+                      <span className="stage-water-number">{stg.stageLiters.toLocaleString()}</span>
+                      <span className="stage-water-unit">{isTa ? "லிட்டர் / ஏக்." : "L / Acre"}</span>
+                    </div>
+
+                    <div className="stage-progress-track">
+                      <div
+                        className="stage-progress-fill"
+                        style={{
+                          width: `${stg.sharePct * 2.5}%`,
+                          backgroundColor: stageColors[i % stageColors.length]
+                        }}
+                      />
+                    </div>
+
+                    <div className="stage-water-submetrics">
+                      <span>{isTa ? `~${stg.stageLitersLakh} லட்சம் லிட்டர்` : `~${stg.stageLitersLakh} Lakh Liters`}</span>
+                      <span className="font-mono" style={{ color: "#38bdf8" }}>{stg.stageMm} mm {isTa ? "ஆழம்" : "depth"}</span>
+                    </div>
+                  </div>
+
+                  {/* Standing Water / Irrigation Protocol */}
+                  <div className="stage-protocol-tag">
+                    <Droplets size={13} style={{ flexShrink: 0 }} />
+                    <span>{standingWater}</span>
+                  </div>
+
+                  <p className="step-desc">{desc}</p>
+                </div>
+              );
+            })}
           </div>
         </div>
       </section>
